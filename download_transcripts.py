@@ -1,4 +1,3 @@
-
 import subprocess
 import os
 from pathlib import Path
@@ -6,6 +5,7 @@ from pathlib import Path
 COOKIES_FILE = "cookies.txt"
 URL_LIST_FILE = "video_urls.txt"
 OUTPUT_DIR = "transcripts"
+KEEP_VTT = False  # <-- Set to True if you want to keep the .vtt file after conversion
 
 def vtt_to_text(vtt_path):
     with open(vtt_path, "r", encoding="utf-8") as f:
@@ -60,7 +60,11 @@ def download_and_convert(url, custom_title):
         f.write(text)
 
     print(f"Transcript saved to {output_file}")
-    os.remove(vtt_file)
+
+    # Optionally delete .vtt
+    if not KEEP_VTT:
+        os.remove(vtt_file)
+        print(f"Deleted VTT file: {vtt_file}")
 
 def main():
     if not os.path.exists(COOKIES_FILE):
