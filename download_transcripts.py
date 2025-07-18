@@ -1,13 +1,14 @@
 import subprocess
 import os
-from pathlib import Path
 import re
-from datetime import timedelta, datetime
+from datetime import timedelta
+from pathlib import Path
 
 COOKIES_FILE = "cookies.txt"
 URL_LIST_FILE = "video_urls.txt"
 OUTPUT_DIR = "transcripts"
-KEEP_VTT = False  # <-- Set to True if you want to keep the .vtt file after conversion
+KEEP_VTT = False  # Set to True if you want to keep the .vtt file after conversion
+
 
 def parse_vtt_timestamp(ts):
     h, m, s = ts.split(":")
@@ -54,14 +55,16 @@ def vtt_to_text(vtt_path, group_minutes=2):
     return "\n\n".join(paragraphs)
 
 def sanitize_filename(title):
-    import re
+    """Sanitize filename to remove/replace illegal characters."""
     return re.sub(r'[\\/*?:"<>|]', "_", title).strip()
 
+
 def download_and_convert(url, custom_title):
+    """Download .vtt subtitle for a YouTube video and convert to readable text."""
     print(f"Processing: {url}")
     safe_title = sanitize_filename(custom_title)
 
-    # Download subtitles
+    # Download subtitles only
     result = subprocess.run([
         "yt-dlp",
         "--cookies", COOKIES_FILE,
@@ -81,21 +84,23 @@ def download_and_convert(url, custom_title):
         print(f"Subtitle file not found: {vtt_file}")
         return
 
-    # Convert and save
+    # Convert VTT to paragraph text
     text = vtt_to_text(vtt_file, group_minutes=1)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_file = os.path.join(OUTPUT_DIR, f"{safe_title}.txt")
+
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(text)
 
     print(f"Transcript saved to {output_file}")
 
-    # Optionally delete .vtt
     if not KEEP_VTT:
         os.remove(vtt_file)
         print(f"Deleted VTT file: {vtt_file}")
 
+
 def main():
+    """Main entry point: process each video URL and title from the list."""
     if not os.path.exists(COOKIES_FILE):
         print("Missing cookies.txt.")
         return
@@ -110,7 +115,8 @@ def main():
                 print(f"Skipping malformed line: {line.strip()}")
                 continue
             url, title = parts
-            download_and_convert(url, title)
+            download_and_convert(url.strip(), title.strip())
+
 
 if __name__ == "__main__":
     main()
