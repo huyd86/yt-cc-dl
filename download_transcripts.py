@@ -1,28 +1,57 @@
 import subprocess
 import os
 from pathlib import Path
+import re
+from datetime import timedelta, datetime
 
 COOKIES_FILE = "cookies.txt"
 URL_LIST_FILE = "video_urls.txt"
 OUTPUT_DIR = "transcripts"
 KEEP_VTT = False  # <-- Set to True if you want to keep the .vtt file after conversion
 
-def vtt_to_text(vtt_path):
+def parse_vtt_timestamp(ts):
+    h, m, s = ts.split(":")
+    s, ms = s.split(".")
+    return timedelta(hours=int(h), minutes=int(m), seconds=int(s), milliseconds=int(ms))
+
+def clean_and_merge_lines(lines):
+    # Merge lines into a single paragraph while preserving sentence flow
+    paragraph = ' '.join(lines).strip()
+    paragraph = re.sub(r'\s+', ' ', paragraph)  # collapse extra spaces
+    return paragraph
+
+def vtt_to_text(vtt_path, group_minutes=2):
     with open(vtt_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    cleaned_lines = []
-    last_line = None
-    for line in lines:
-        line = line.strip()
-        if not line or "-->" in line or "<" in line:
-            continue
-        if line == last_line:
-            continue
-        cleaned_lines.append(line)
-        last_line = line
+    paragraphs = []
+    current_lines = []
+    current_start = None
 
-    return "\n".join(cleaned_lines)
+    for i in range(len(lines)):
+        line = lines[i].strip()
+
+        if "-->" in line:
+            start_ts = line.split(" --> ")[0]
+            start_time = parse_vtt_timestamp(start_ts)
+
+            if current_start is None:
+                current_start = start_time
+            elif start_time - current_start >= timedelta(minutes=group_minutes):
+                if current_lines:
+                    paragraphs.append(clean_and_merge_lines(current_lines))
+                current_lines = []
+                current_start = start_time
+        elif line and not line.startswith("WEBVTT") and "<" not in line:
+            # Try to avoid speaker tags or formatting
+            if re.match(r"^\[.*\]$", line):
+                continue
+            current_lines.append(line)
+
+    if current_lines:
+        paragraphs.append(clean_and_merge_lines(current_lines))
+
+    return "\n\n".join(paragraphs)
 
 def sanitize_filename(title):
     import re
@@ -53,7 +82,7 @@ def download_and_convert(url, custom_title):
         return
 
     # Convert and save
-    text = vtt_to_text(vtt_file)
+    text = vtt_to_text(vtt_file, group_minutes=1)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_file = os.path.join(OUTPUT_DIR, f"{safe_title}.txt")
     with open(output_file, "w", encoding="utf-8") as f:
