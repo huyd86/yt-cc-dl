@@ -1,0 +1,5 @@
+# Ignore everything in the transcripts folder
+transcripts/
+
+# Ignore cookies.txt file
+cookies.txt
