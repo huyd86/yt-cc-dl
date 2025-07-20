@@ -1,6 +1,7 @@
 import subprocess
 import os
 import re
+import glob
 from datetime import timedelta
 from pathlib import Path
 
@@ -68,9 +69,10 @@ def download_and_convert(url, custom_title):
     result = subprocess.run([
         "yt-dlp",
         "--cookies", COOKIES_FILE,
-        "--write-auto-sub",
+        "--write-subs",
+        # "--write-auto-sub",
         "--skip-download",
-        "--sub-lang", "vi",
+        "--sub-lang", "vi,en",
         "--output", f"{safe_title}.%(ext)s",
         url
     ], capture_output=True, text=True)
@@ -79,9 +81,22 @@ def download_and_convert(url, custom_title):
         print(f"Error downloading subtitles for {url}:\n{result.stderr}")
         return
 
-    vtt_file = f"{safe_title}.vi.vtt"
-    if not os.path.exists(vtt_file):
-        print(f"Subtitle file not found: {vtt_file}")
+    # Look for .vtt file with correct base name
+    vtt_candidates = glob.glob(f"{safe_title}.*.vtt")
+    if not vtt_candidates:
+        print(f"No subtitle file found for: {safe_title}")
+        return
+
+    # Prefer vi.vtt over en.vtt if both exist
+    vtt_file = None
+    for lang in ["vi", "en"]:
+        candidate = f"{safe_title}.{lang}.vtt"
+        if candidate in vtt_candidates:
+            vtt_file = candidate
+            break
+
+    if not vtt_file:
+        print(f"No preferred subtitle (vi/en) found for: {safe_title}")
         return
 
     # Convert VTT to paragraph text
@@ -97,7 +112,6 @@ def download_and_convert(url, custom_title):
     if not KEEP_VTT:
         os.remove(vtt_file)
         print(f"Deleted VTT file: {vtt_file}")
-
 
 def main():
     """Main entry point: process each video URL and title from the list."""
