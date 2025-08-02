@@ -101,13 +101,14 @@ def main():
 
     with open(URL_LIST_FILE, "r", encoding="utf-8") as f:
         for line in f:
-            parts = line.strip().split(",")
-            if len(parts) != 2:
+            if '|' not in line:
                 print(f"Skipping malformed line: {line.strip()}")
                 continue
-            url, title = parts
+            title, url = line.strip().split('|', 1)
+            title = title.strip()
+            url = url.strip()
             for lang in ["vi", "en"]:
-                success = download_and_convert(url.strip(), title.strip(), lang)
+                success = download_and_convert(url, title, lang)
                 if success:
                     break
 
