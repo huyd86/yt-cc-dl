@@ -5,7 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 
 COOKIES_FILE = "cookies.txt"
-URL_LIST_FILE = "video_urls.txt"
+URL_LIST_FILE = "vid_infos.filtered.txt"
 OUTPUT_DIR = "transcripts"
 KEEP_VTT = False  # Set to True if you want to keep the .vtt file after conversion
 
@@ -76,6 +76,7 @@ def download_and_convert(url, custom_title, lang):
         print(f"Deleted VTT file: {vtt_candidate}")
 
     return True
+
 def main():
     if not os.path.exists(COOKIES_FILE):
         print("Missing cookies.txt.")
@@ -83,6 +84,8 @@ def main():
     if not os.path.exists(URL_LIST_FILE):
         print(f"Missing {URL_LIST_FILE}.")
         return
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     with open(URL_LIST_FILE, "r", encoding="utf-8") as f:
         for line in f:
@@ -92,6 +95,11 @@ def main():
             title, url = line.strip().split('|', 1)
             title = title.strip()
             url = url.strip()
+            safe_title = sanitize_filename(title)
+            output_file = os.path.join(OUTPUT_DIR, f"{safe_title}.txt")
+            if os.path.exists(output_file):
+                print(f"Transcript already exists for '{title}' ({output_file}), skipping.")
+                continue
             for lang in ["vi", "en"]:
                 success = download_and_convert(url, title, lang)
                 if success:
