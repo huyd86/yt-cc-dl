@@ -1,7 +1,6 @@
 import subprocess
 import os
 import re
-import glob
 from datetime import timedelta
 from pathlib import Path
 
@@ -10,50 +9,37 @@ URL_LIST_FILE = "video_urls.txt"
 OUTPUT_DIR = "transcripts"
 KEEP_VTT = False  # Set to True if you want to keep the .vtt file after conversion
 
-def parse_vtt_timestamp(ts):
-    h, m, s = ts.split(":")
-    s, ms = s.split(".")
-    return timedelta(hours=int(h), minutes=int(m), seconds=int(s), milliseconds=int(ms))
+def sanitize_filename(title):
+    return re.sub(r'[\\/*?:"<>|]', "_", title).strip()
 
-def clean_and_merge_lines(lines):
-    paragraph = ' '.join(lines).strip()
-    paragraph = re.sub(r'\s+', ' ', paragraph)
-    return paragraph
-
-def vtt_to_text(vtt_path, group_minutes=2):
+def vtt_to_text(vtt_path):
     with open(vtt_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    paragraphs = []
-    current_lines = []
-    current_start = None
+    sentences = []
+    current_sentence = ""
 
     for i in range(len(lines)):
         line = lines[i].strip()
+        if "-->" in line or not line or line.startswith("WEBVTT") or "<" in line:
+            continue
+        if re.match(r"^\[.*\]$", line):
+            continue
 
-        if "-->" in line:
-            start_ts = line.split(" --> ")[0]
-            start_time = parse_vtt_timestamp(start_ts)
+        # Merge lines and split at sentence boundary
+        current_sentence += (" " if current_sentence else "") + line
+        while True:
+            match = re.search(r"([.?!])(\s+|$)", current_sentence)
+            if not match:
+                break
+            end = match.end()
+            sentences.append(current_sentence[:end].strip())
+            current_sentence = current_sentence[end:].lstrip()
 
-            if current_start is None:
-                current_start = start_time
-            elif start_time - current_start >= timedelta(minutes=group_minutes):
-                if current_lines:
-                    paragraphs.append(clean_and_merge_lines(current_lines))
-                current_lines = []
-                current_start = start_time
-        elif line and not line.startswith("WEBVTT") and "<" not in line:
-            if re.match(r"^\[.*\]$", line):
-                continue
-            current_lines.append(line)
+    if current_sentence:
+        sentences.append(current_sentence.strip())
 
-    if current_lines:
-        paragraphs.append(clean_and_merge_lines(current_lines))
-
-    return "\n\n".join(paragraphs)
-
-def sanitize_filename(title):
-    return re.sub(r'[\\/*?:"<>|]', "_", title).strip()
+    return "\n".join(sentences)
 
 def download_and_convert(url, custom_title, lang):
     print(f"Processing: {url} (lang: {lang})")
@@ -76,7 +62,7 @@ def download_and_convert(url, custom_title, lang):
         print(f"No subtitle file found for: {vtt_candidate}")
         return False
 
-    text = vtt_to_text(vtt_candidate, group_minutes=1)
+    text = vtt_to_text(vtt_candidate)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_file = os.path.join(OUTPUT_DIR, f"{safe_title}.txt")
 
@@ -90,7 +76,6 @@ def download_and_convert(url, custom_title, lang):
         print(f"Deleted VTT file: {vtt_candidate}")
 
     return True
-
 def main():
     if not os.path.exists(COOKIES_FILE):
         print("Missing cookies.txt.")
