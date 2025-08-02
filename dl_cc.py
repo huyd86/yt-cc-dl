@@ -5,8 +5,8 @@ from datetime import timedelta
 from pathlib import Path
 
 COOKIES_FILE = "cookies.txt"
-URL_LIST_FILE = "vid_infos.filtered.txt"
-OUTPUT_DIR = "transcripts"
+URL_LIST_FILE = "tts_vid_infos.filtered.txt"
+OUTPUT_DIR = "tts_transcripts"
 KEEP_VTT = False  # Set to True if you want to keep the .vtt file after conversion
 
 def sanitize_filename(title):

@@ -43,7 +43,7 @@ Thumbs.db
 *.tmp
 
 # Ignore output
-transcripts/
+*transcripts/
 
 # Ignore these input files
 cookies.txt
