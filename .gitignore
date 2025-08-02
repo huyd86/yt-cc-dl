@@ -1,6 +1,51 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Jupyter Notebook checkpoints (if any)
+.ipynb_checkpoints/
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment/config files
+.env
+.env.*
+
+# Temporary data/cache
+*.bak
+*.swp
+*.tmp
+
 # Ignore output
 transcripts/
 
 # Ignore these input files
 cookies.txt
 video_urls.txt
+config.ini
