@@ -47,5 +47,5 @@ transcripts/
 
 # Ignore these input files
 cookies.txt
-video_urls.txt
-config.ini
+*vid_infos*.txt
+*urls*.txt
