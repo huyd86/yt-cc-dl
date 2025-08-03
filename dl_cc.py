@@ -16,19 +16,48 @@ KEEP_VTT = False  # Set to True if you want to keep the .vtt file after conversi
 def sanitize_filename(title):
     return re.sub(r'[\\/*?:"<>|]', "_", title).strip()
 
+def parse_vtt_time(vtt_time):
+    h, m, s = vtt_time.split(":")
+    seconds, ms = s.split(".")
+    return timedelta(hours=int(h), minutes=int(m), seconds=int(seconds), milliseconds=int(ms))
+
 def vtt_to_text(vtt_path):
     with open(vtt_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
     sentences = []
     current_sentence = ""
+    sentence_start_time = None
+    last_line = None  # <--- Added to track duplicates
 
     for i in range(len(lines)):
         line = lines[i].strip()
-        if "-->" in line or not line or line.startswith("WEBVTT") or "<" in line:
+
+        # Parse timestamp line, e.g. "00:01:16.360 --> 00:01:18.320"
+        if "-->" in line:
+            time_start_str = line.split("-->")[0].strip()
+            try:
+                cur_time = parse_vtt_time(time_start_str)
+            except Exception:
+                cur_time = None
+            if (sentence_start_time is not None and cur_time is not None and
+                (cur_time - sentence_start_time) >= timedelta(minutes=0.5) and current_sentence):
+                sentences.append(current_sentence.strip())
+                current_sentence = ""
+                sentence_start_time = cur_time
+            elif sentence_start_time is None and cur_time is not None:
+                sentence_start_time = cur_time
+            continue
+
+        if not line or line.startswith("WEBVTT") or "<" in line:
             continue
         if re.match(r"^\[.*\]$", line):
             continue
+
+        # Deduplication: skip if exact match with last line appended
+        if line == last_line:
+            continue
+        last_line = line
 
         current_sentence += (" " if current_sentence else "") + line
         while True:
@@ -38,6 +67,7 @@ def vtt_to_text(vtt_path):
             end = match.end()
             sentences.append(current_sentence[:end].strip())
             current_sentence = current_sentence[end:].lstrip()
+            sentence_start_time = None
 
     if current_sentence:
         sentences.append(current_sentence.strip())
@@ -80,7 +110,6 @@ def download_and_convert(url, custom_title, lang):
         print(f"Deleted VTT file: {vtt_candidate}")
 
     return True
-
 def main():
     if not os.path.exists(COOKIES_FILE):
         print("Missing cookies.txt.")
