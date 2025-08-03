@@ -45,7 +45,9 @@ Thumbs.db
 # Ignore output
 *transcripts/
 
-# Ignore these input files
+# Ignore these input
+*input/
+config.ini
 cookies.txt
 *vid_infos*.txt
 *urls*.txt

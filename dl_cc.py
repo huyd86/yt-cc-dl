@@ -1,12 +1,16 @@
 import subprocess
 import os
 import re
+import configparser
 from datetime import timedelta
 from pathlib import Path
 
-COOKIES_FILE = "cookies.txt"
-URL_LIST_FILE = "tts_vid_infos.filtered.txt"
-OUTPUT_DIR = "tts_transcripts"
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+COOKIES_FILE = config['DEFAULT'].get('COOKIES_FILE', "cookies.txt")
+URL_LIST_FILE = config['DEFAULT'].get('URL_LIST_FILE', "tts_vid_infos.filtered.txt")
+OUTPUT_DIR = config['DEFAULT'].get('OUTPUT_DIR', "tts_transcripts")
 KEEP_VTT = False  # Set to True if you want to keep the .vtt file after conversion
 
 def sanitize_filename(title):
@@ -26,7 +30,6 @@ def vtt_to_text(vtt_path):
         if re.match(r"^\[.*\]$", line):
             continue
 
-        # Merge lines and split at sentence boundary
         current_sentence += (" " if current_sentence else "") + line
         while True:
             match = re.search(r"([.?!])(\s+|$)", current_sentence)
@@ -48,6 +51,7 @@ def download_and_convert(url, custom_title, lang):
         "yt-dlp",
         "--cookies", COOKIES_FILE,
         "--write-subs",
+        "--write-auto-sub",
         "--sub-lang", lang,
         "--skip-download",
         "--output", f"{safe_title}.%(ext)s",
